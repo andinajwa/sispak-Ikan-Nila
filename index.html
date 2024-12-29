@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="utf-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>Sistem Pakar Diagnosa Penyakit Ikan</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css" rel="stylesheet"/>
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+        }
+        #diagnosis {
+            background-image: url('https://storage.googleapis.com/a1aa/image/Ajo2d5rXe2UdOqtx2UAIxflMrVnaDffklBV4OE3eeY1ulbEfJA.jpg');
+            background-size: cover;
+            background-repeat: no-repeat;
+            background-position: center;
+        }
+        #diagnosis::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(to bottom, rgba(0, 0, 0, 0.5), rgba(255, 255, 255, 0.8));
+            z-index: 0;
+        }
+        .bg-overlay {
+            position: relative;
+            z-index: 1;
+            background-color: rgba(255, 255, 255, 0.95);
+            padding: 2rem;
+            border-radius: 1rem;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        ul li {
+            transition: transform 0.3s, background-color 0.3s;
+        }
+        ul li:hover {
+            transform: scale(1.05);
+            background-color: rgba(59, 130, 246, 0.1);
+        }
+        button {
+            transition: background-color 0.3s, transform 0.2s;
+        }
+        button:hover {
+            transform: translateY(-3px);
+        }
+        #popup {
+            z-index: 9999;
+        }
+        #popup-content {
+            z-index: 9999;
+        }
+    </style>
+</head>
+<body class="bg-gray-100">
+    <div class="container mx-auto p-4 bg-white shadow-lg rounded-lg mt-10" id="dashboard">
+        <div class="text-center">
+            <h1 class="text-3xl font-bold text-gray-800">Sistem Pakar Diagnosa Penyakit Ikan</h1>
+            <img alt="Background image of Nile Tilapia fish in a pond" class="w-full h-48 object-cover mt-4 rounded-lg" src="https://storage.googleapis.com/a1aa/image/Ajo2d5rXe2UdOqtx2UAIxflMrVnaDffklBV4OE3eeY1ulbEfJA.jpg"/>
+            <div class="mt-6">
+                <button class="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-700" onclick="showDiagnosisPage()">Mulai Diagnosa</button>
+            </div>
+        </div>
+    </div>
+    <div class="container mx-auto p-4 hidden relative" id="diagnosis">
+        <div class="bg-overlay">
+            <div class="text-center">
+                <h1 class="text-3xl font-bold text-gray-800">Sistem Pakar Diagnosa Penyakit Ikan</h1>
+                <h2 class="text-xl font-semibold text-gray-700 mt-6">Pilih Gejala:</h2>
+            </div>
+            <ul class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4" id="gejala_list">
+                <!-- Gejala akan dimuat di sini -->
+                {% for gejala in gejala_list %}
+                <li>
+                    <input type="checkbox" id="{{ gejala[0] }}" class="mr-2">
+                    <label for="{{ gejala[0] }}">
+                        <span class="font-bold">{{ gejala[0] }}:</span> {{ gejala[1] }}
+                    </label>
+                </li>
+                {% endfor %}
+            </ul>
+            <div class="text-center mt-6">
+                <button class="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-700" onclick="submitGejala()">Kirim Gejala</button>
+            </div>
+            <div class="result mt-6 p-4 bg-green-100 border border-green-400 rounded-lg text-green-700 hidden" id="result"></div>
+            <div class="error mt-6 p-4 bg-red-100 border border-red-400 rounded-lg text-red-700 hidden" id="error"></div>
+        </div>
+    </div>
+    <div class="fixed inset-0 bg-gray-800 bg-opacity-75 flex items-center justify-center hidden" id="popup">
+        <div class="bg-white p-6 rounded-lg shadow-lg max-w-lg w-full">
+            <h2 class="text-2xl font-bold mb-4">Hasil Diagnosa</h2>
+            <div id="popup-content"></div>
+            <div class="mt-6 text-center">
+                <button class="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-700" onclick="closePopup()">Tutup</button>
+            </div>
+        </div>
+    </div>
+    <script>
+        function showDiagnosisPage() {
+            document.getElementById('dashboard').classList.add('hidden');
+            document.getElementById('diagnosis').classList.remove('hidden');
+        }
+
+
+        async function submitGejala() {
+        const selectedGejala = Array.from(document.querySelectorAll('#gejala_list input:checked'))
+            .map(input => input.id);
+
+        if (selectedGejala.length === 0) {
+            document.getElementById('error').textContent = 'Silakan pilih setidaknya satu gejala.';
+            document.getElementById('error').classList.remove('hidden');
+            return;
+        }
+
+        document.getElementById('error').classList.add('hidden');
+
+        try {
+            const response = await fetch('/diagnose', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ selected_gejala: selectedGejala }),
+            });
+
+            if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+
+            const data = await response.json();
+
+            if (data.error) {
+                document.getElementById('error').textContent = data.error;
+                document.getElementById('error').classList.remove('hidden');
+                return;
+            }
+
+            const popupContent = document.getElementById('popup-content');
+            popupContent.innerHTML = `
+                <p><strong>Gejala yang dipilih:</strong> ${selectedGejala.join(', ')}</p>
+                <p><strong>Hasil Diagnosa:</strong> ${Array.isArray(data.result) ? data.result.join(', ') : data.result}</p>`;
+            document.getElementById('popup').classList.remove('hidden');
+        } catch (error) {
+            console.error('Error submitting gejala:', error);
+            document.getElementById('error').textContent = 'Terjadi kesalahan saat mengirim data.';
+            document.getElementById('error').classList.remove('hidden');
+        }
+    }
+
+    function closePopup() {
+        document.getElementById('popup').classList.add('hidden');
+    }
+    </script>
+</body>
+</html>
